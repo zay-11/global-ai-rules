@@ -1,0 +1,146 @@
+{
+  "version": "2.0",
+  "archetypes": [
+    {
+      "id": "astro-centaure",
+      "name": "Hippique AI Prediction Engine",
+      "description": "Moteur de prediction hippique multinomial (PMU/Vedic/XGBoost).",
+      "match": {
+        "files": ["core/selection_filter.py", "core/trio_ev_gate.py", "db/xgb_ranker.json", "db/daily_bets.db"],
+        "requirements": ["xgboost", "ephem", "swisseph"],
+        "dirs": ["centaure", "hippique", "pmu", "astro centaure"],
+        "content_search": ["PMU", "CENTAURE", "tierce", "xgbranker", "hippique", "trot", "xgb_ranker"]
+      },
+      "skills": ["centaure-backtest", "centaure-engine", "centaure-data", "py-diagnose", "rigorous-math-verifier"],
+      "mcp": ["sqlite", "ssh"],
+      "directives": [
+        "Ranker XGBRanker Phase 27 GELE — aucun retrain sans NDCG Delta>0.01 sur holdout (N=2739).",
+        "Seul alpha operationnel: TRIO median 2100-2600m TROT, ROI+88.5%, N=138. Gates intouchables.",
+        "P&L PMU exact: pnl = dividend * stake - stake. Jamais de haircut supplementaire.",
+        "Mode PAPER uniquement — production interdite avant 100 courses medianes resolues.",
+        "Ne jamais toucher au modele predictif si la demande concerne uniquement betting/RAG."
+      ]
+    },
+    {
+      "id": "deep-learning",
+      "name": "AI Deep Learning Research",
+      "description": "Recherche et entrainement autonome de modeles ML/DL.",
+      "match": {
+        "files": ["train.py", "prepare.py", "trainer.py", "train.sh", "pretrain.py"],
+        "requirements": ["torch", "tensorflow", "jax", "transformers", "lightning", "accelerate", "deepspeed"],
+        "dirs": ["autoresearch", "training", "experiments", "research", "ml"]
+      },
+      "skills": ["py-diagnose", "rigorous-math-verifier", "autonomous-team", "lean-code"],
+      "mcp": [],
+      "directives": [
+        "Boucle Ratchet stricte: Modify -> Train -> Evaluate -> Commit or Reset Git.",
+        "Optimisations CUDA/GPU prioritaires (batching, mixed precision, gradient checkpointing).",
+        "Ne jamais modifier les fichiers d'infrastructure core sans demande explicite."
+      ]
+    },
+    {
+      "id": "web-scraping",
+      "name": "Web Scraping Suite",
+      "description": "Crawling haute-performance et extraction de donnees LLM-Ready.",
+      "match": {
+        "files": ["scrape.py", "crawler.py", "spider.py", "crawl.py"],
+        "requirements": ["crawl4ai", "playwright", "scrapy", "selenium", "beautifulsoup4", "httpx", "aiohttp"],
+        "dirs": ["scraper", "crawler", "spider", "scraping"]
+      },
+      "skills": ["py-diagnose", "autonomous-team", "lean-code"],
+      "mcp": [],
+      "directives": [
+        "Extraction Markdown propre via Crawl4AI/Playwright — output LLM-ready.",
+        "Filtres anti-bruit rigoureux: cookies, headers, footers, publicites.",
+        "Stocker les extractions dans scraped_pages/ avec timestamp ISO."
+      ]
+    },
+    {
+      "id": "ecommerce",
+      "name": "E-Commerce & Digital Content",
+      "description": "Boutique digitale, automatisation video et contenus premium.",
+      "match": {
+        "files": ["config.toml", "store.py", "products.json", "shop.py"],
+        "dirs": ["ecommerce", "content", "boutique", "shop", "moneyprinterturbo", "etsy"],
+        "content_search": ["etsy", "shopify", "woocommerce", "ffmpeg", "imagemagick"]
+      },
+      "skills": ["design-taste-frontend", "brandkit", "autonomous-team", "lean-code"],
+      "mcp": [],
+      "directives": [
+        "Ligne editoriale et visuelle premium — bannir les templates IA generiques.",
+        "Chemins multimedia portables: FFmpeg, ImageMagick.",
+        "SEO haute densite de mots-cles avec ton elegant et differentiant."
+      ]
+    },
+    {
+      "id": "frontend",
+      "name": "Web UI Premium Frontend",
+      "description": "Interfaces web responsives et design systems avances.",
+      "match": {
+        "files": ["index.html", "package.json", "vite.config.ts", "vite.config.js", "next.config.js", "nuxt.config.ts", "svelte.config.js"],
+        "requirements_js": ["react", "vue", "svelte", "next", "nuxt", "astro", "angular", "solid-js"],
+        "dirs": ["frontend", "ui", "web", "app", "client", "src"]
+      },
+      "skills": ["design-taste-frontend", "gpt-taste", "minimalist-ui", "frontend-design"],
+      "mcp": [],
+      "directives": [
+        "Design epure et bespoke — aucun template IA generique.",
+        "Systeme CSS en HSL avec variables custom properties et tokens de design.",
+        "Micro-animations fluides 200-300ms ease-out — jamais distrayantes."
+      ]
+    },
+    {
+      "id": "api-backend",
+      "name": "API Backend Service",
+      "description": "Service API REST/GraphQL haute disponibilite.",
+      "match": {
+        "files": ["app.py", "main.py", "server.py", "app.ts", "main.ts", "api.py"],
+        "requirements": ["fastapi", "flask", "django", "starlette", "litestar", "aiohttp"],
+        "requirements_js": ["express", "hapi", "nestjs", "fastify", "koa"],
+        "dirs": ["api", "backend", "server", "service", "microservice"]
+      },
+      "skills": ["py-diagnose", "lean-code", "autonomous-team"],
+      "mcp": ["sqlite"],
+      "directives": [
+        "Validation des entrees a la frontiere systeme — jamais dans le core.",
+        "Reponses d'erreur standardisees (RFC 9457 Problem Details).",
+        "Logging structure JSON avec request_id a chaque handler."
+      ]
+    },
+    {
+      "id": "data-science",
+      "name": "Data Science & Analytics",
+      "description": "Analyse de donnees, visualisations et rapports.",
+      "match": {
+        "files": ["analysis.py", "EDA.py", "explore.py"],
+        "file_extensions": [".ipynb"],
+        "requirements": ["pandas", "polars", "numpy", "matplotlib", "seaborn", "plotly", "scipy", "statsmodels"],
+        "dirs": ["analysis", "notebooks", "analytics", "data", "research"]
+      },
+      "skills": ["py-diagnose", "rigorous-math-verifier", "lean-code"],
+      "mcp": ["sqlite"],
+      "directives": [
+        "Verifier distributions et valeurs manquantes avant toute modelisation.",
+        "Separer exploration/validation — jamais de fuite test->train.",
+        "Reproducibilite: seed fixe, versions de librairies documentees."
+      ]
+    },
+    {
+      "id": "devops",
+      "name": "DevOps & Infrastructure",
+      "description": "CI/CD, containers, orchestration cloud.",
+      "match": {
+        "files": ["Dockerfile", "docker-compose.yml", "docker-compose.yaml", "Makefile", "Jenkinsfile", "Taskfile.yml"],
+        "dirs": ["infra", "devops", "deploy", "kubernetes", "k8s", "terraform", "ansible"],
+        "content_search": ["dockerfile", "kubernetes", "helm", "terraform", "ansible", "github actions"]
+      },
+      "skills": ["lean-code", "autonomous-team"],
+      "mcp": ["ssh"],
+      "directives": [
+        "Principe de moindre privilege pour toutes les permissions IAM/RBAC.",
+        "Images Docker multi-stage avec utilisateur non-root.",
+        "Secrets via variables d'environnement — jamais en dur dans le code."
+      ]
+    }
+  ]
+}

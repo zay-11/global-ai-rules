@@ -1,124 +1,171 @@
-# install.ps1 - Installateur Systeme Automatique en 1-clic pour global-ai-rules
+# install.ps1 v2.0 — Installateur systeme avec rollback et validation
+param(
+    [switch]$Uninstall
+)
 $ErrorActionPreference = "Stop"
 
-Write-Host "====================================================================="
-Write-Host "  INSTALLATION GLOBALE - GLOBAL-AI-RULES"
-Write-Host "====================================================================="
+$userProfile   = $env:USERPROFILE
+$localBin      = Join-Path $userProfile ".local\bin"
+$claudeHooks   = Join-Path $userProfile ".claude\hooks"
+$settingsPath  = Join-Path $userProfile ".claude\settings.json"
+$installDir    = Join-Path $localBin "global-ai-rules"
+$scriptDir     = Split-Path -Parent $MyInvocation.MyCommand.Definition
+
+if ($Uninstall) {
+    & (Join-Path $scriptDir "uninstall.ps1")
+    return
+}
+
+Write-Host ""
+Write-Host "================================================================="
+Write-Host "  GLOBAL AI RULES v2.0 — INSTALLATION"
+Write-Host "================================================================="
 Write-Host ""
 
-$userProfile = $env:USERPROFILE
-$localBin = Join-Path $userProfile ".local\bin"
-$claudeHooks = Join-Path $userProfile ".claude\hooks"
-$settingsJsonPath = Join-Path $userProfile ".claude\settings.json"
-$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
+# --- Pre-flight checks -------------------------------------------------------
+Write-Host "[CHECK] Validating environment..."
 
-# 1. Creation des dossiers
-if (-not (Test-Path $localBin)) {
-    New-Item -ItemType Directory -Path $localBin -Force > $null
-    Write-Host "[OK] Repertoire local bin cree : $localBin"
-}
-if (-not (Test-Path $claudeHooks)) {
-    New-Item -ItemType Directory -Path $claudeHooks -Force > $null
-    Write-Host "[OK] Repertoire local hooks cree : $claudeHooks"
+$nodeVersion = $null
+try {
+    $nodeVersion = (node --version 2>$null)
+    Write-Host "  [OK]  Node.js found: $nodeVersion"
+} catch {
+    Write-Warning "  Node.js not found. The session hook requires Node.js."
+    Write-Warning "  Install from: https://nodejs.org (LTS recommended)"
+    Write-Host ""
 }
 
-# 2. Deploiement des fichiers
-Write-Host "[1/3] Deploiement des scripts systeme..."
-$globalRulesDir = Join-Path $localBin "global-ai-rules"
-if (-not (Test-Path $globalRulesDir)) {
-    New-Item -ItemType Directory -Path $globalRulesDir -Force > $null
-}
-
-Copy-Item (Join-Path $scriptDir "CLAUDE.md") (Join-Path $globalRulesDir "CLAUDE.md") -Force
-Copy-Item (Join-Path $scriptDir "setup-karpathy.ps1") (Join-Path $localBin "setup-karpathy.ps1") -Force
-Copy-Item (Join-Path $scriptDir "global-orchestrator.mjs") (Join-Path $claudeHooks "global-orchestrator.mjs") -Force
-
-Write-Host "  [OK] CLAUDE.md source installe dans : $globalRulesDir"
-Write-Host "  [OK] setup-karpathy.ps1 installe dans : $localBin"
-Write-Host "  [OK] global-orchestrator.mjs installe dans : $claudeHooks"
-
-# 3. Modification de settings.json
 Write-Host ""
-Write-Host "[2/3] Integration dans la configuration de Claude Code..."
 
-$orchestratorCommand = "node " + '"' + $userProfile + '\.claude\hooks\global-orchestrator.mjs"'
-
-if (Test-Path $settingsJsonPath) {
-    try {
-        $settingsRaw = Get-Content $settingsJsonPath -Raw -Encoding UTF8
-        $settings = ConvertFrom-Json $settingsRaw
-        
-        # S'assurer de la structure de base
-        if (-not $settings.PSObject.Properties["hooks"]) {
-            $settings | Add-Member -MemberType NoteProperty -Name "hooks" -Value @{} -Force
-        }
-        if (-not $settings.hooks.PSObject.Properties["SessionStart"]) {
-            $settings.hooks | Add-Member -MemberType NoteProperty -Name "SessionStart" -Value @( @{ hooks = @() } ) -Force
-        }
-        
-        $sessionStart = $settings.hooks.SessionStart[0]
-        if (-not $sessionStart.PSObject.Properties["hooks"]) {
-            $sessionStart | Add-Member -MemberType NoteProperty -Name "hooks" -Value @() -Force
-        }
-        
-        # Filtrer et verifier la presence
-        $newHooks = @()
-        $alreadyExists = $false
-        foreach ($h in $sessionStart.hooks) {
-            if ($h.command -like "*global-orchestrator.mjs*") {
-                $alreadyExists = $true
-            }
-            if ($h.command -notlike "*auto-karpathy.mjs*") {
-                $newHooks += $h
-            }
-        }
-        
-        if (-not $alreadyExists) {
-            $newHook = @{
-                type = "command"
-                command = $orchestratorCommand
-            }
-            $newHooks += $newHook
-            $sessionStart.hooks = $newHooks
-            
-            $updatedJson = ConvertTo-Json $settings -Depth 100
-            Set-Content -Path $settingsJsonPath -Value $updatedJson -Encoding UTF8
-            Write-Host "  [OK] Hook global-orchestrator active avec succes dans ton settings.json !"
-        } else {
-            Write-Host "  [OK] Hook global-orchestrator deja configure dans settings.json."
-        }
-    } catch {
-        Write-Warning "Impossible de faire la configuration automatiquement. Renseigne manuellement le hook dans ton settings.json."
+# --- Create directories ------------------------------------------------------
+Write-Host "[1/4] Creating directories..."
+foreach ($dir in @($localBin, $claudeHooks, $installDir)) {
+    if (-not (Test-Path $dir)) {
+        New-Item -ItemType Directory -Path $dir -Force > $null
+        Write-Host "  [OK]  Created: $dir"
+    } else {
+        Write-Host "  [OK]  Exists:  $dir"
     }
-} else {
-    $defaultSettings = '{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":"' + $orchestratorCommand.Replace("\", "\\") + '"}]}]}}'
-    Set-Content -Path $settingsJsonPath -Value $defaultSettings -Encoding UTF8
-    Write-Host "  [OK] Nouveau fichier settings.json cree et active avec success !"
+}
+Write-Host ""
+
+# --- Deploy files ------------------------------------------------------------
+Write-Host "[2/4] Deploying files..."
+$filesToCopy = @(
+    @{ Src = "CLAUDE.md";               Dst = Join-Path $installDir "CLAUDE.md" },
+    @{ Src = "archetypes.json";         Dst = Join-Path $installDir "archetypes.json" },
+    @{ Src = "global-orchestrator.mjs"; Dst = Join-Path $claudeHooks "global-orchestrator.mjs" },
+    @{ Src = "setup-karpathy.ps1";      Dst = Join-Path $localBin "setup-karpathy.ps1" },
+    @{ Src = "update.ps1";              Dst = Join-Path $localBin "global-ai-rules-update.ps1" }
+)
+
+foreach ($f in $filesToCopy) {
+    $src = Join-Path $scriptDir $f.Src
+    if (Test-Path $src) {
+        Copy-Item $src $f.Dst -Force
+        Write-Host "  [OK]  $($f.Src) -> $($f.Dst)"
+    } else {
+        Write-Warning "  [SKIP] Source not found: $src"
+    }
+}
+Write-Host ""
+
+# --- Register Claude Code hook -----------------------------------------------
+Write-Host "[3/4] Configuring Claude Code session hook..."
+$hookCmd = "node `"$claudeHooks\global-orchestrator.mjs`""
+
+$backupPath = $null
+if (Test-Path $settingsPath) {
+    $backupPath = "$settingsPath.backup_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+    Copy-Item $settingsPath $backupPath
+    Write-Host "  [OK]  Backup created: $backupPath"
 }
 
-# 4. Enregistrement de l'alias dans le profil
+try {
+    $settings = $null
+    if (Test-Path $settingsPath) {
+        $raw = Get-Content $settingsPath -Raw -Encoding UTF8
+        $settings = $raw | ConvertFrom-Json
+    } else {
+        $settings = [PSCustomObject]@{}
+    }
+
+    if (-not $settings.PSObject.Properties["hooks"]) {
+        $settings | Add-Member -MemberType NoteProperty -Name "hooks" -Value ([PSCustomObject]@{}) -Force
+    }
+    if (-not $settings.hooks.PSObject.Properties["SessionStart"]) {
+        $settings.hooks | Add-Member -MemberType NoteProperty -Name "SessionStart" -Value @([PSCustomObject]@{ hooks = @() }) -Force
+    }
+
+    $sessionStart = $settings.hooks.SessionStart[0]
+    if (-not $sessionStart.PSObject.Properties["hooks"]) {
+        $sessionStart | Add-Member -MemberType NoteProperty -Name "hooks" -Value @() -Force
+    }
+
+    $alreadyRegistered = $sessionStart.hooks | Where-Object { $_.command -like "*global-orchestrator.mjs*" }
+
+    if (-not $alreadyRegistered) {
+        $newHook = [PSCustomObject]@{ type = "command"; command = $hookCmd }
+        $sessionStart.hooks = @($sessionStart.hooks) + @($newHook)
+        $json = ConvertTo-Json $settings -Depth 20
+        Set-Content -Path $settingsPath -Value $json -Encoding UTF8
+        Write-Host "  [OK]  Hook registered in settings.json"
+    } else {
+        Write-Host "  [OK]  Hook already registered — skipped"
+    }
+} catch {
+    Write-Warning "  Failed to update settings.json: $_"
+    if ($backupPath -and (Test-Path $backupPath)) {
+        Copy-Item $backupPath $settingsPath -Force
+        Write-Host "  [ROLLBACK] settings.json restored from backup"
+    }
+}
 Write-Host ""
-Write-Host "[3/3] Configuration du raccourci PowerShell..."
-$aliasLine = "Set-Alias setup-karpathy " + '"' + $localBin + '\setup-karpathy.ps1"'
+
+# --- Register PowerShell alias -----------------------------------------------
+Write-Host "[4/4] Registering PowerShell alias..."
 
 if (-not (Test-Path $PROFILE)) {
     New-Item -ItemType File -Path $PROFILE -Force > $null
 }
 
-$profileContent = Get-Content $PROFILE -Raw
-if ($profileContent -notlike "*setup-karpathy*") {
-    Add-Content -Path $PROFILE -Value "`n# Global AI Rules Alias`n$aliasLine"
-    Write-Host "  [OK] Raccourci setup-karpathy ajoute a ton profil PowerShell !"
-    Write-Host "  -> Pour charger ce raccourci, execute : . `$profile"
+$profileContent = Get-Content $PROFILE -Raw -ErrorAction SilentlyContinue
+
+$aliasBlock = @"
+
+# --- Global AI Rules ---
+Set-Alias setup-karpathy "$localBin\setup-karpathy.ps1"
+function gair-update { & "$localBin\global-ai-rules-update.ps1" }
+# -----------------------
+"@
+
+if ($profileContent -notlike "*Global AI Rules*") {
+    Add-Content -Path $PROFILE -Value $aliasBlock -Encoding UTF8
+    Write-Host "  [OK]  Alias 'setup-karpathy' added to PowerShell profile"
+    Write-Host "  [OK]  Command 'gair-update' added (self-update from GitHub)"
 } else {
-    Write-Host "  [OK] Raccourci setup-karpathy deja present dans ton profil."
+    Write-Host "  [OK]  Aliases already present in profile"
 }
 
+# --- Summary -----------------------------------------------------------------
 Write-Host ""
-Write-Host "====================================================================="
-Write-Host "  ARCHITECTURE AUTO-GENERATRICE INSTALLEE AVEC SUCCES !"
-Write-Host "====================================================================="
-Write-Host "  Toutes les IA (Cursor, Windsurf, Claude Code, Copilot, etc.)"
-Write-Host "  profiteront desormais de regles locales intelligentes dans tes projets !"
-Write-Host "====================================================================="
+Write-Host "================================================================="
+Write-Host "  INSTALLATION COMPLETE"
+Write-Host "================================================================="
+Write-Host ""
+Write-Host "  What's installed:"
+Write-Host "    - Session hook auto-runs at every Claude Code startup"
+Write-Host "    - 8 project archetypes with smart detection"
+Write-Host "    - 'setup-karpathy' command for any project directory"
+Write-Host "    - 'gair-update' command for self-update"
+Write-Host ""
+Write-Host "  Next steps:"
+Write-Host "    1. Reload your terminal: . `$profile"
+Write-Host "    2. Open Claude Code in any project — hook auto-runs"
+Write-Host "    3. Or run manually: setup-karpathy"
+Write-Host ""
+if ($backupPath) {
+    Write-Host "  Backup: $backupPath"
+}
+Write-Host "================================================================="
 Write-Host ""

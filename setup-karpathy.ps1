@@ -1,96 +1,186 @@
-# setup-karpathy.ps1 - Generateur universel de regles pour assistants IA (Cursor, Windsurf, Claude, Copilot)
+# setup-karpathy.ps1 v2.0 — Generateur universel de regles IA
+# Usage: setup-karpathy [-Force] [-DryRun]
 param(
-    [switch]$Force
+    [switch]$Force,
+    [switch]$DryRun
 )
 
-$scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Definition
-$karpathyFile = Join-Path $scriptPath "CLAUDE.md"
+$ErrorActionPreference = "Stop"
+$installDir = "$env:USERPROFILE\.local\bin\global-ai-rules"
+$archetypesFile = Join-Path $installDir "archetypes.json"
+$claudeSourceFile = Join-Path $installDir "CLAUDE.md"
 
-if (-not (Test-Path $karpathyFile)) {
-    # Fallback si installe globalement
-    $karpathyFile = "$env:USERPROFILE\.local\bin\global-ai-rules\CLAUDE.md"
-}
-
-if (-not (Test-Path $karpathyFile)) {
-    Write-Error "Fichier source CLAUDE.md non trouve."
-    exit 1
-}
-
-# 1. Diagnostic dynamique de l'archetype de projet
-$cwd = Get-Location
-$files = Get-ChildItem -Name
-$projectType = "Standard Workspace"
-$description = "Espace de travail generique. Adopte une approche rigoureuse et de haute qualite."
-$customDirectives = @()
-
-# Diagnostic : AI Research / Deep Learning
-if (($files -contains "train.py") -or ($files -contains "prepare.py") -or ($cwd.Path.ToLower().Contains("autoresearch"))) {
-    $projectType = "AI Deep Learning Research (Autoresearch)"
-    $description = "Projet de recherche et d'entrainement autonome de modeles de Deep Learning."
-    $customDirectives = @(
-        "- Prioriser l'optimisation des performances de calcul (ex: NVIDIA CUDA, batching intelligent).",
-        "- Adopter scrupuleusement le principe de la boucle 'Ratchet' (Modifier -> Entrainer -> Evaluer -> Committer ou Reset Git).",
-        "- Limiter les modifications de code aux seuls fichiers d'experimentation active."
-    )
-}
-# Diagnostic : Web Scraping & Crawling
-elseif (($files -contains "scrape.py") -or ($files -contains "lotus_scraper") -or ($cwd.Path.ToLower().Contains("scraper"))) {
-    $projectType = "Web Scraping Suite (LotusScraper)"
-    $description = "Suite premium de crawling asynchrone et d'extraction de donnees LLM-Ready."
-    $customDirectives = @(
-        "- Privilegier l'extraction Markdown propre et structuree (ex: via Crawl4AI ou Playwright).",
-        "- Mettre en place des filtres anti-bruit rigoureux (supprimer cookies, headers, footers et publicités).",
-        "- Stocker systematiquement les donnees extraites localement dans le projet."
-    )
-}
-# Diagnostic : E-Commerce & Content Creation
-elseif (($files -contains "moneyprinterturbo") -or ($files -contains "etsy_ready") -or ($cwd.Path.ToLower().Contains("ecommerce")) -or ($cwd.Path.ToLower().Contains("content"))) {
-    $projectType = "E-Commerce & Digital Content Creation"
-    $description = "Espace e-commerce et chaine de creation automatisee de contenus digitaux."
-    $customDirectives = @(
-        "- Maintenir une ligne editoriale et visuelle de marque haut de gamme (premium, esthetique epuree).",
-        "- Valider les configurations portables de traitement multimedia (FFmpeg, ImageMagick).",
-        "- Optimiser les contenus et fiches produits pour un SEO riche en mots-cles tout en gardant une plume elegante."
-    )
-}
-# Diagnostic : Web/Frontend standard
-elseif (($files -contains "index.html") -or ($files -contains "package.json") -or ($files -contains "index.css")) {
-    $projectType = "Web UI Premium Frontend"
-    $description = "Projet de developpement web et d'interface utilisateur responsive."
-    $customDirectives = @(
-        "- Proposer des interfaces fluides, epurees et elegantes. Bannir les designs IA generiques standardises.",
-        "- Etablir un systeme de design CSS structure avec des palettes de couleurs HSL harmonieuses.",
-        "- Integrer des micro-animations interactives fluides pour ameliorer l'engagement utilisateur."
-    )
-}
-
-# 2. Construction du fichier de regles localise
-$karpathyContent = Get-Content $karpathyFile -Raw
-$ruleHeader = @"
-# AI ORCHESTRATION RULES (Auto-Generated)
-# Archetype de projet detecte : $projectType
-# Description : $description
-
-$karpathyContent
-
-## Project-Specific Guidelines
-
-"@
-
-foreach ($dir in $customDirectives) {
-    $ruleHeader += "$dir`n"
-}
-
-# 3. Ecriture simultanee pour toutes les IA du marche
-$targetFiles = @("CLAUDE.md", ".cursorrules", ".windsurfrules")
-
-foreach ($target in $targetFiles) {
-    if ((Test-Path $target) -and -not $Force) {
-        Write-Host "[Karpathy] Un fichier $target existe deja. Utilisez -Force pour forcer l'ecrasement."
-    } else {
-        Set-Content -Path $target -Value $ruleHeader -Encoding UTF8
-        Write-Host "✓ Fichier $target genere avec succes."
+# --- Load archetypes config --------------------------------------------------
+$archetypes = $null
+if (Test-Path $archetypesFile) {
+    try {
+        $archetypes = Get-Content $archetypesFile -Raw -Encoding UTF8 | ConvertFrom-Json
+    } catch {
+        Write-Warning "Could not parse archetypes.json: $_"
     }
 }
 
-Write-Host "`n📚 4 Principes Karpathy et directives specifiques deployes pour toutes les IA !"
+# --- Project scanner ---------------------------------------------------------
+$cwd = Get-Location
+$files = Get-ChildItem -Name
+$filesLower = $files | ForEach-Object { $_.ToLower() }
+$dirName = (Split-Path $cwd -Leaf).ToLower()
+
+$requirements = @()
+if (Test-Path "requirements.txt") {
+    $requirements = (Get-Content "requirements.txt") | ForEach-Object {
+        ($_ -split "[>=<!# `t]")[0].Trim().ToLower()
+    } | Where-Object { $_ -ne "" }
+}
+
+$jsDeps = @()
+if (Test-Path "package.json") {
+    try {
+        $pkg = Get-Content "package.json" -Raw | ConvertFrom-Json
+        $allDeps = @{}
+        if ($pkg.dependencies)     { $pkg.dependencies.PSObject.Properties    | ForEach-Object { $allDeps[$_.Name] = 1 } }
+        if ($pkg.devDependencies)  { $pkg.devDependencies.PSObject.Properties  | ForEach-Object { $allDeps[$_.Name] = 1 } }
+        $jsDeps = $allDeps.Keys | ForEach-Object { $_ -replace "^@[^/]+/","" | ForEach-Object { $_.ToLower() } }
+    } catch {}
+}
+
+$claudeContent = ""
+if (Test-Path "CLAUDE.md") { $claudeContent = (Get-Content "CLAUDE.md" -Raw).ToLower() }
+
+$readmeContent = ""
+if (Test-Path "README.md") { $readmeContent = (Get-Content "README.md" -Raw).ToLower() }
+
+# --- Archetype scoring -------------------------------------------------------
+function Get-ArchetypeScore($archetype) {
+    $score = 0
+    $m = $archetype.match
+    if (-not $m) { return 0 }
+
+    foreach ($f in $m.files) {
+        $name = ($f -split "/")[-1].ToLower()
+        if ($filesLower -contains $name) { $score += 3 }
+    }
+    foreach ($req in $m.requirements) {
+        if ($requirements -contains $req.ToLower()) { $score += 2 }
+    }
+    foreach ($dep in $m.requirements_js) {
+        if ($jsDeps -contains $dep.ToLower()) { $score += 2 }
+    }
+    foreach ($dir in $m.dirs) {
+        if ($dirName.Contains($dir.ToLower())) { $score += 2 }
+    }
+    $hits = 0
+    $allContent = "$claudeContent $readmeContent"
+    foreach ($kw in $m.content_search) {
+        if ($allContent.Contains($kw.ToLower()) -and $hits -lt 4) { $score += 1; $hits++ }
+    }
+    return $score
+}
+
+$detected = $null
+$bestScore = 0
+
+if ($archetypes -and $archetypes.archetypes) {
+    foreach ($arch in $archetypes.archetypes) {
+        $score = Get-ArchetypeScore $arch
+        if ($score -gt $bestScore) {
+            $bestScore = $score
+            $detected = $arch
+        }
+    }
+}
+
+$projectType   = if ($detected) { $detected.name }        else { "Standard Workspace" }
+$description   = if ($detected) { $detected.description } else { "Espace de travail generique." }
+$customRules   = if ($detected) { $detected.directives }  else { @() }
+
+# --- Build content -----------------------------------------------------------
+$baseContent = ""
+if (Test-Path $claudeSourceFile) {
+    $baseContent = Get-Content $claudeSourceFile -Raw -Encoding UTF8
+} else {
+    $baseContent = @"
+# CLAUDE.md — Behavioral Guidelines
+
+## 1. Think Before Coding
+- State assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them.
+- If a simpler approach exists, say so.
+
+## 2. Simplicity First
+- Minimum code that solves the problem. Nothing speculative.
+- No abstractions for single-use code.
+- If you write 200 lines and it could be 50, rewrite it.
+
+## 3. Surgical Changes
+- Touch only what you must.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+
+## 4. Goal-Driven Execution
+- Define success criteria. Loop until verified.
+- Strong success criteria let you loop independently.
+"@
+}
+
+$scoreTag = if ($bestScore -gt 0) { " (confidence: $bestScore)" } else { "" }
+
+$rulesContent = @"
+# AI ORCHESTRATION RULES — Auto-Generated by global-ai-rules v2.0
+# Archetype : $projectType$scoreTag
+# Context   : $description
+# Generated : $(Get-Date -Format "yyyy-MM-dd HH:mm")
+
+$baseContent
+"@
+
+if ($customRules.Count -gt 0) {
+    $rulesContent += "`n## Project-Specific Directives`n"
+    foreach ($rule in $customRules) {
+        $rulesContent += "- $rule`n"
+    }
+}
+
+# --- Write files -------------------------------------------------------------
+$targets = @("CLAUDE.md", ".cursorrules", ".windsurfrules")
+
+Write-Host ""
+Write-Host "================================================================="
+Write-Host "  SETUP-KARPATHY v2.0 — GLOBAL AI RULES GENERATOR"
+Write-Host "================================================================="
+Write-Host "  Project   : $(Split-Path $cwd -Leaf)"
+Write-Host "  Archetype : $projectType$scoreTag"
+Write-Host "  Context   : $description"
+Write-Host "================================================================="
+Write-Host ""
+
+if ($DryRun) {
+    Write-Host "[DRY RUN] Would generate: $($targets -join ', ')"
+    Write-Host "[DRY RUN] Content preview (first 10 lines):"
+    $rulesContent -split "`n" | Select-Object -First 10 | ForEach-Object { Write-Host "  $_" }
+    return
+}
+
+foreach ($target in $targets) {
+    if ((Test-Path $target) -and -not $Force) {
+        Write-Host "  [SKIP] $target already exists. Use -Force to overwrite."
+    } else {
+        Set-Content -Path $target -Value $rulesContent -Encoding UTF8
+        Write-Host "  [OK]   $target generated."
+    }
+}
+
+Write-Host ""
+Write-Host "  Skills to activate:"
+$skills = if ($detected) { $detected.skills } else { @("lean-code", "autonomous-team") }
+foreach ($s in $skills) { Write-Host "    + $s" }
+
+if ($detected -and $detected.mcp.Count -gt 0) {
+    Write-Host "  MCP servers:"
+    foreach ($m in $detected.mcp) { Write-Host "    * $m" }
+}
+
+Write-Host ""
+Write-Host "  Rules deployed for Cursor, Windsurf, Claude Code, and Copilot."
+Write-Host "================================================================="
+Write-Host ""
