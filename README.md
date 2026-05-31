@@ -34,7 +34,6 @@ Inspiré d'Andrej Karpathy, il injecte des directives rigoureuses pour éliminer
 
 | ID | Nom | Détecté par |
 |---|---|---|
-| `astro-centaure` | Hippique AI Prediction Engine | `xgboost`, dossier centaure, keywords PMU |
 | `deep-learning` | AI Deep Learning Research | `train.py`, `torch`, `transformers` |
 | `web-scraping` | Web Scraping Suite | `scrape.py`, `crawl4ai`, `playwright` |
 | `ecommerce` | E-Commerce & Digital Content | `config.toml`, keywords etsy/shopify |

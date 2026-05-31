@@ -1,7 +1,5 @@
-# install.ps1 v2.0 — Installateur systeme avec rollback et validation
-param(
-    [switch]$Uninstall
-)
+# install.ps1 v2.0 -- Installateur systeme avec rollback et validation
+param([switch]$Uninstall)
 $ErrorActionPreference = "Stop"
 
 $userProfile   = $env:USERPROFILE
@@ -18,21 +16,19 @@ if ($Uninstall) {
 
 Write-Host ""
 Write-Host "================================================================="
-Write-Host "  GLOBAL AI RULES v2.0 — INSTALLATION"
+Write-Host "  GLOBAL AI RULES v2.0 -- INSTALLATION"
 Write-Host "================================================================="
 Write-Host ""
 
 # --- Pre-flight checks -------------------------------------------------------
 Write-Host "[CHECK] Validating environment..."
 
-$nodeVersion = $null
 try {
     $nodeVersion = (node --version 2>$null)
     Write-Host "  [OK]  Node.js found: $nodeVersion"
 } catch {
     Write-Warning "  Node.js not found. The session hook requires Node.js."
     Write-Warning "  Install from: https://nodejs.org (LTS recommended)"
-    Write-Host ""
 }
 
 Write-Host ""
@@ -93,8 +89,10 @@ try {
     if (-not $settings.PSObject.Properties["hooks"]) {
         $settings | Add-Member -MemberType NoteProperty -Name "hooks" -Value ([PSCustomObject]@{}) -Force
     }
-    if (-not $settings.hooks.PSObject.Properties["SessionStart"]) {
-        $settings.hooks | Add-Member -MemberType NoteProperty -Name "SessionStart" -Value @([PSCustomObject]@{ hooks = @() }) -Force
+
+    $hooksObj = $settings.hooks
+    if (-not $hooksObj.PSObject.Properties["SessionStart"]) {
+        $hooksObj | Add-Member -MemberType NoteProperty -Name "SessionStart" -Value @([PSCustomObject]@{ hooks = @() }) -Force
     }
 
     $sessionStart = $settings.hooks.SessionStart[0]
@@ -102,7 +100,10 @@ try {
         $sessionStart | Add-Member -MemberType NoteProperty -Name "hooks" -Value @() -Force
     }
 
-    $alreadyRegistered = $sessionStart.hooks | Where-Object { $_.command -like "*global-orchestrator.mjs*" }
+    $alreadyRegistered = $false
+    foreach ($h in $sessionStart.hooks) {
+        if ($h.command -like "*global-orchestrator.mjs*") { $alreadyRegistered = $true }
+    }
 
     if (-not $alreadyRegistered) {
         $newHook = [PSCustomObject]@{ type = "command"; command = $hookCmd }
@@ -111,7 +112,7 @@ try {
         Set-Content -Path $settingsPath -Value $json -Encoding UTF8
         Write-Host "  [OK]  Hook registered in settings.json"
     } else {
-        Write-Host "  [OK]  Hook already registered — skipped"
+        Write-Host "  [OK]  Hook already registered -- skipped"
     }
 } catch {
     Write-Warning "  Failed to update settings.json: $_"
@@ -130,14 +131,9 @@ if (-not (Test-Path $PROFILE)) {
 }
 
 $profileContent = Get-Content $PROFILE -Raw -ErrorAction SilentlyContinue
-
-$aliasBlock = @"
-
-# --- Global AI Rules ---
-Set-Alias setup-karpathy "$localBin\setup-karpathy.ps1"
-function gair-update { & "$localBin\global-ai-rules-update.ps1" }
-# -----------------------
-"@
+$aliasSetup  = "Set-Alias setup-karpathy `"$localBin\setup-karpathy.ps1`""
+$aliasUpdate = "function gair-update { & `"$localBin\global-ai-rules-update.ps1`" }"
+$aliasBlock  = "`n# --- Global AI Rules ---`n$aliasSetup`n$aliasUpdate`n# -----------------------"
 
 if ($profileContent -notlike "*Global AI Rules*") {
     Add-Content -Path $PROFILE -Value $aliasBlock -Encoding UTF8
@@ -157,11 +153,11 @@ Write-Host "  What's installed:"
 Write-Host "    - Session hook auto-runs at every Claude Code startup"
 Write-Host "    - 8 project archetypes with smart detection"
 Write-Host "    - 'setup-karpathy' command for any project directory"
-Write-Host "    - 'gair-update' command for self-update"
+Write-Host "    - 'gair-update' command for self-update from GitHub"
 Write-Host ""
 Write-Host "  Next steps:"
 Write-Host "    1. Reload your terminal: . `$profile"
-Write-Host "    2. Open Claude Code in any project — hook auto-runs"
+Write-Host "    2. Open Claude Code in any project -- hook auto-runs"
 Write-Host "    3. Or run manually: setup-karpathy"
 Write-Host ""
 if ($backupPath) {

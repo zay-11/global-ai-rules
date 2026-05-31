@@ -47,7 +47,7 @@ for (const arch of config.archetypes) {
 
 // --- Archetype IDs expected --------------------------------------------------
 const ids = config.archetypes.map(a => a.id);
-const expectedIds = ["astro-centaure", "deep-learning", "web-scraping", "frontend", "api-backend", "data-science", "devops"];
+const expectedIds = ["deep-learning", "web-scraping", "frontend", "api-backend", "data-science", "devops"];
 for (const id of expectedIds) {
   assert(ids.includes(id), `archetype "${id}" is present`);
 }
@@ -111,17 +111,6 @@ const feScan = {
 };
 const feResult = detectArchetype(feScan);
 assert(feResult?.id === "frontend", `package.json + react -> frontend (got ${feResult?.id})`);
-
-// ASTRO CENTAURE project
-const acScan = {
-  filesLower: new Set(["requirements.txt", "claude.md", "readme.md"]),
-  dirName: "astro centaure",
-  requirements: ["xgboost", "pandas"],
-  jsDeps: [],
-  claudeContent: "pmu trot tierce centaure xgbranker"
-};
-const acResult = detectArchetype(acScan);
-assert(acResult?.id === "astro-centaure", `CENTAURE dir + PMU content -> astro-centaure (got ${acResult?.id})`);
 
 // Devops project
 const devScan = {

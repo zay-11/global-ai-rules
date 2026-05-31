@@ -2,26 +2,6 @@
   "version": "2.0",
   "archetypes": [
     {
-      "id": "astro-centaure",
-      "name": "Hippique AI Prediction Engine",
-      "description": "Moteur de prediction hippique multinomial (PMU/Vedic/XGBoost).",
-      "match": {
-        "files": ["core/selection_filter.py", "core/trio_ev_gate.py", "db/xgb_ranker.json", "db/daily_bets.db"],
-        "requirements": ["xgboost", "ephem", "swisseph"],
-        "dirs": ["centaure", "hippique", "pmu", "astro centaure"],
-        "content_search": ["PMU", "CENTAURE", "tierce", "xgbranker", "hippique", "trot", "xgb_ranker"]
-      },
-      "skills": ["centaure-backtest", "centaure-engine", "centaure-data", "py-diagnose", "rigorous-math-verifier"],
-      "mcp": ["sqlite", "ssh"],
-      "directives": [
-        "Ranker XGBRanker Phase 27 GELE — aucun retrain sans NDCG Delta>0.01 sur holdout (N=2739).",
-        "Seul alpha operationnel: TRIO median 2100-2600m TROT, ROI+88.5%, N=138. Gates intouchables.",
-        "P&L PMU exact: pnl = dividend * stake - stake. Jamais de haircut supplementaire.",
-        "Mode PAPER uniquement — production interdite avant 100 courses medianes resolues.",
-        "Ne jamais toucher au modele predictif si la demande concerne uniquement betting/RAG."
-      ]
-    },
-    {
       "id": "deep-learning",
       "name": "AI Deep Learning Research",
       "description": "Recherche et entrainement autonome de modeles ML/DL.",
